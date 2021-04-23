@@ -1,0 +1,35 @@
+package yaml
+
+type AccountBalanceType uint8
+
+const (
+	AccountBalanceTypeCLOSING_AVAILABLE AccountBalanceType = iota
+	AccountBalanceTypeCLOSING_BOOKED
+	AccountBalanceTypeCLOSING_CLEARED
+	AccountBalanceTypeEXPECTED
+	AccountBalanceTypeFORWARD_AVAILABLE
+	AccountBalanceTypeINFORMATION
+	AccountBalanceTypeINTERIM_AVAILABLE
+	AccountBalanceTypeINTERIM_BOOKED
+	AccountBalanceTypeINTERIM_CLEARED
+	AccountBalanceTypeOPENING_AVAILABLE
+	AccountBalanceTypeOPENING_BOOKED
+	AccountBalanceTypeOPENING_CLEARED
+	AccountBalanceTypePREVIOUSLY_CLOSED_BOOKED
+	AccountBalanceTypeAUTHORISED
+	AccountBalanceTypeOTHER
+	AccountBalanceTypeUNKNOWN
+)
+
+type CreditLineType uint8
+
+const (
+	CreditLineTypeAVAILABLE CreditLineType = iota
+	CreditLineTypeCREDIT
+	CreditLineTypeEMERGENCY
+	CreditLineTypePRE_AGREED
+	CreditLineTypeTEMPORARY
+	CreditLineTypeOTHER
+	CreditLineTypeUNKNOWN
+)
+

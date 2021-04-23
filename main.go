@@ -3,80 +3,88 @@ package main
 import (
 	"flag"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"log"
 	"os"
+	"path"
 	"strings"
+	"text/template"
+
+	"gopkg.in/yaml.v2"
 )
+
+type Configuration struct {
+	Enums   []Enum
+	Package string
+}
+
+type Enum struct {
+	Name   string
+	Type   string
+	Values []string
+}
+
+const enumTemplate = `package {{.Package}}
+{{range .Enums}}
+type {{.Name}} {{.Type}}
+
+const (
+	{{- range .Values}}
+	{{ . -}}
+	{{- end}}
+)
+{{end}}
+`
 
 var (
-	camelCase = flag.Bool("camelcase", false, "convert enum names into const names in camelcase")
+	marshal = flag.Bool("marshal", false, "marshal")
 )
-
-var usage = func() {
-	_, _ = fmt.Fprintf(os.Stderr, "Usage of goen:\n")
-	_, _ = fmt.Fprintf(os.Stderr, "\tgoen [flags] [file]\n")
-	_, _ = fmt.Fprintf(os.Stderr, "Flags:\n")
-	flag.PrintDefaults()
-}
 
 func main() {
 	log.SetPrefix("goen: ")
-
-	flag.Usage = usage
 	flag.Parse()
 
-	// FIXME: use it
-	_ = camelCase
-
-	args := flag.Args()
-
-	log.Printf("args=%v", args)
-
-	if len(args) == 0 {
-		args = []string{"."}
+	fromFilePath := flag.Args()[0]
+	toFilePath := flag.Args()[1]
+	if toFilePath == "" {
+		log.Fatal("[ERROR] to file is empty")
 	}
 
-	filename := args[0]
-	if isDir(filename) {
-		log.Printf("dir is nor allowed: filename=%s", filename)
-		return
-	}
+	fb, err := os.ReadFile(fromFilePath)
+	assertErr(err)
 
-	log.Println("--->", filename)
+	var cfg *Configuration
+	err = yaml.Unmarshal(fb, &cfg)
+	assertErr(err)
 
-	fs := token.NewFileSet()
-	f, err := parser.ParseFile(fs, filename, nil, parser.ParseComments)
-	if err != nil {
-		log.Printf("parse file: err=%v", err)
-		return
-	}
+	cfg.Package, _ = path.Split(toFilePath)
+	cfg.Package = strings.ReplaceAll(cfg.Package, "/", "")
 
-	var groups []*ast.CommentGroup
-	ast.Inspect(f, func(n ast.Node) bool {
-		v, ok := n.(*ast.CommentGroup)
-		if !ok {
-			return true
+	for i := range cfg.Enums {
+		for j := range cfg.Enums[i].Values {
+			name := cfg.Enums[i].Name
+			if j == 0 {
+				cfg.Enums[i].Values[j] = fmt.Sprintf("%s%s %s = iota", name, cfg.Enums[i].Values[j], name)
+			} else {
+				cfg.Enums[i].Values[j] = fmt.Sprintf("%s%s", name, cfg.Enums[i].Values[j])
+			}
 		}
-		groups = append(groups, v)
-		return false
-	})
-
-	b := strings.Builder{}
-	for i := range groups {
-		b.WriteString(groups[i].Text())
-		b.WriteRune('\n')
 	}
-	log.Println(b.String())
+
+	tmpl, err := template.New("enums").Parse(enumTemplate)
+	assertErr(err)
+
+	err = os.Remove(toFilePath)
+	assertErr(err)
+
+	toF, err := os.OpenFile(toFilePath, os.O_RDWR|os.O_CREATE, 0755)
+	assertErr(err)
+
+	err = tmpl.Execute(toF, cfg)
+	assertErr(err)
 }
 
-func isDir(path string) bool {
-	fileInfo, err := os.Stat(path)
+func assertErr(err error) {
 	if err != nil {
-		log.Printf("get file stat: path=%s, error=%v", path, err)
-		os.Exit(1)
+		log.Fatalf("[ERROR] %w+", err)
 	}
-	return fileInfo.IsDir()
 }
