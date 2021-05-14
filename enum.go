@@ -1,0 +1,35 @@
+package main
+
+type AccountBalanceType uint8
+
+const (
+	AccountBalanceTypeClosingAvailable uint8 = iota
+	AccountBalanceTypeClosingBooked
+	AccountBalanceTypeClosingCleared
+	AccountBalanceTypeExpected
+	AccountBalanceTypeForwardAvailable
+	AccountBalanceTypeInformation
+	AccountBalanceTypeInterimAvailable
+	AccountBalanceTypeInterimBooked
+	AccountBalanceTypeInterimCleared
+	AccountBalanceTypeOpeningAvailable
+	AccountBalanceTypeOpeningBooked
+	AccountBalanceTypeOpeningCleared
+	AccountBalanceTypePreviouslyClosedBooked
+	AccountBalanceTypeAuthorised
+	AccountBalanceTypeOther
+	AccountBalanceTypeUnknown
+)
+
+type CreditLineType uint8
+
+const (
+	CreditLineTypeAvailable uint8 = iota
+	CreditLineTypeCredit
+	CreditLineTypeEmergency
+	CreditLineTypePreAgreed
+	CreditLineTypeTemporary
+	CreditLineTypeOther
+	CreditLineTypeUnknown
+)
+
