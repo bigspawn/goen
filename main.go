@@ -3,13 +3,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 	"path"
 	"strings"
 	"text/template"
 	"unicode"
+
+	"gopkg.in/yaml.v2"
 )
 
 type Config struct {
@@ -39,8 +40,15 @@ type Value struct {
 	Name string
 }
 
-const formatIota = "%s%s %s = iota"
-const format = "%s%s"
+const (
+	formatIota        = "%s%s %s = iota"
+	formatIotaPlusOne = "%s%s %s = iota + 1"
+	format            = "%s%s"
+)
+
+var (
+	plusOne = flag.Bool("one", false, "iota starts from one")
+)
 
 func main() {
 	log.SetPrefix("goen: ")
@@ -85,10 +93,13 @@ func prepare(pkg string, cfg *Config) *EnumFile {
 		eFile.Enums[i].Type = t
 		eFile.Enums[i].Values = make([]Value, len(cfg.Enums[i].Values))
 
+		// TODO: to use different values depending on the specified type:
+		//	- strings
+		//	- numerics (iouta)
 		for j := range cfg.Enums[i].Values {
 			n := toCamelCase(cfg.Enums[i].Values[j])
 			if j == 0 {
-				n = fmt.Sprintf(formatIota, eFile.Enums[i].Name, n, t)
+				n = fmt.Sprintf(getIotaFormat(), eFile.Enums[i].Name, n, t)
 			} else {
 				n = fmt.Sprintf(format, eFile.Enums[i].Name, n)
 			}
@@ -128,21 +139,31 @@ func extractPackage(dstPath string) (dir string, err error) {
 	return
 }
 
-func saveTemplate(tmpl *template.Template, e *EnumFile, dstPath string) error {
-	_, err := os.Stat(dstPath)
-	if err == nil {
-		rErr := os.Remove(dstPath)
-		if rErr != nil {
-			return rErr
+func saveTemplate(tmpl *template.Template, e *EnumFile, dstPath string) (err error) {
+	_, err = os.Stat(dstPath)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
 		}
-	} else if !os.IsNotExist(err) {
-		return err
+	} else {
+		osErr := os.Remove(dstPath)
+		if osErr != nil {
+			return osErr
+		}
 	}
 
-	f, err := os.OpenFile(dstPath, os.O_RDWR|os.O_CREATE, 0755)
+	var f *os.File
+	f, err = os.OpenFile(dstPath, os.O_RDWR|os.O_CREATE, 0755)
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		fErr := f.Close()
+		if fErr != nil {
+			err = fErr
+		}
+	}()
 
 	return tmpl.Execute(f, e)
 }
@@ -165,4 +186,11 @@ func assertErr(err error) {
 	if err != nil {
 		log.Fatalf("[ERROR] %v", err)
 	}
+}
+
+func getIotaFormat() string {
+	if *plusOne {
+		return formatIotaPlusOne
+	}
+	return formatIota
 }
